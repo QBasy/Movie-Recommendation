@@ -1,0 +1,71 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: movie_mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: movie_recommendation
+    volumes:
+      - mongodb_data:/data/db
+      - ./data/mongodb:/data/db
+    networks:
+      - movie_network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: movie_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - movie_network
+
+  backend:
+    build: ./backend
+    container_name: movie_backend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      MONGO_URI: mongodb://admin:password123@mongodb:27017/movie_recommendation?authSource=admin
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      PORT: 3000
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - movie_network
+
+  frontend:
+    build: ./frontend
+    container_name: movie_frontend
+    ports:
+      - "5173:3000"
+    depends_on:
+      - backend
+    networks:
+      - movie_network
+
+  mongo_backup:
+    image: mongo:7.0
+    container_name: mongo_backup
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backups:/backups
+      - ./data/mongodb:/data/db
+    entrypoint: >
+      sh -c "mongodump --host mongodb --username admin --password password123 --authenticationDatabase admin --out /backups/$(date +%Y%m%d%H%M%S)"
+    networks:
+      - movie_network
+
+volumes:
+  mongodb_data:
+
+networks:
+  movie_network:
+    driver: bridge
