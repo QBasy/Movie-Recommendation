@@ -14,10 +14,10 @@ export function Cache(prefix: string, ttl: number = config.cacheTTL) {
                 const cached = await redis.get(cacheKey);
                 if (cached) {
                     const parsedCache = JSON.parse(cached);
-                    console.log(`🎯 Cache HIT: ${cacheKey}`);
+                    console.log(`Cache HIT: ${cacheKey}`);
                     return parsedCache;
                 }
-                console.log(`❌ Cache MISS: ${cacheKey}`);
+                console.log(`Cache MISS: ${cacheKey}`);
             } catch (error) {
                 console.error(`Cache read error for ${cacheKey}:`, error);
             }
@@ -29,14 +29,14 @@ export function Cache(prefix: string, ttl: number = config.cacheTTL) {
                     if (Array.isArray(result)) {
                         if (result.length > 0) {
                             await redis.set(cacheKey, JSON.stringify(result), ttl);
-                            console.log(`💾 Cached array (${result.length} items): ${cacheKey}`);
+                            console.log(`Cached array (${result.length} items): ${cacheKey}`);
                         }
                     } else if (typeof result === 'object' && Object.keys(result).length > 0) {
                         await redis.set(cacheKey, JSON.stringify(result), ttl);
-                        console.log(`💾 Cached object: ${cacheKey}`);
+                        console.log(`Cached object: ${cacheKey}`);
                     } else if (typeof result !== 'object') {
                         await redis.set(cacheKey, JSON.stringify(result), ttl);
-                        console.log(`💾 Cached primitive: ${cacheKey}`);
+                        console.log(`Cached ?: ${cacheKey}`);
                     }
                 }
             } catch (error) {
