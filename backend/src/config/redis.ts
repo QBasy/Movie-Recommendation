@@ -3,7 +3,7 @@ import { config } from './environment.js';
 
 export class RedisClient {
     private static instance: RedisClient;
-    private client: ReturnType<typeof createClient>;
+    private readonly client: ReturnType<typeof createClient>;
 
     private constructor() {
         this.client = createClient({
