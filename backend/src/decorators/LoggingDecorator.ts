@@ -15,11 +15,11 @@ export function Log(target: any, propertyKey: string, descriptor: PropertyDescri
         try {
             const result = await originalMethod.apply(this, args);
             const duration = Date.now() - start;
-            console.log(`[${new Date().toISOString()}] ✅ ${propertyKey} completed in ${duration}ms`);
+            console.log(`[${new Date().toISOString()}] ${propertyKey} completed in ${duration}ms`);
             return result;
         } catch (error) {
             const duration = Date.now() - start;
-            console.error(`[${new Date().toISOString()}] ❌ ${propertyKey} failed after ${duration}ms:`, error);
+            console.error(`[${new Date().toISOString()}] ${propertyKey} failed after ${duration}ms:`, error);
             throw error;
         }
     };
