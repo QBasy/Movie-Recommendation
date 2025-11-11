@@ -4,24 +4,31 @@
     import { api } from '$lib/api';
     import { moviesStore } from '$lib/stores/movies';
     import type { Movie } from '$lib/types';
-    import { Star, Clock, Calendar, Heart, Plus, ShoppingCart } from 'lucide-svelte';
+    import { Star, Clock, Calendar, Heart, Plus, ShoppingCart, Check } from 'lucide-svelte';
 
     let movie: Movie | null = null;
     let similarMovies: Movie[] = [];
     let loading = true;
     let userRating = 0;
+    let isPurchased = false;
+    let purchasing = false;
 
     onMount(async () => {
         const id = $page.params.id;
 
         try {
-            const [movieData, similarData] = await Promise.all([
+            const [movieData, similarData, purchases] = await Promise.all([
                 api.getMovie(id),
-                api.getSimilarMovies(id, 6)
+                api.getSimilarMovies(id, 6),
+                api.getPurchases()
             ]);
 
             movie = movieData.movie;
             similarMovies = similarData.similar;
+            isPurchased = purchases.purchases.some(p => {
+                const movieId = typeof p.movieId === 'string' ? p.movieId : p.movieId._id;
+                return movieId === id;
+            });
 
             await moviesStore.viewMovie(id);
         } catch (error) {
@@ -47,6 +54,24 @@
     async function handleLike() {
         if (movie) {
             await moviesStore.likeMovie(movie._id);
+        }
+    }
+
+    async function handlePurchase() {
+        if (movie && !isPurchased) {
+            purchasing = true;
+            try {
+                await api.recordInteraction({
+                    movieId: movie._id,
+                    type: 'purchase'
+                });
+                isPurchased = true;
+                alert('Purchase successful! Enjoy your movie!');
+            } catch (error) {
+                alert('Purchase failed. Please try again.');
+            } finally {
+                purchasing = false;
+            }
         }
     }
 </script>
@@ -112,10 +137,21 @@
                             <div class="text-4xl font-bold text-primary-600 mb-4">${movie.price}</div>
 
                             <div class="space-y-3">
-                                <button class="px-4 py-2 rounded-lg font-medium transition-all duration-200 bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 w-full flex items-center justify-center gap-2">
-                                    <ShoppingCart size={20} />
-                                    Buy Now
-                                </button>
+                                {#if isPurchased}
+                                    <div class="px-4 py-3 rounded-lg bg-green-100 text-green-800 font-medium flex items-center justify-center gap-2">
+                                        <Check size={20} />
+                                        Already Purchased
+                                    </div>
+                                {:else}
+                                    <button
+                                            on:click={handlePurchase}
+                                            disabled={purchasing}
+                                            class="px-4 py-2 rounded-lg font-medium transition-all duration-200 bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 w-full flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        <ShoppingCart size={20} />
+                                        {purchasing ? 'Processing...' : 'Buy Now'}
+                                    </button>
+                                {/if}
 
                                 <button
                                         on:click={handleAddToWatchlist}
