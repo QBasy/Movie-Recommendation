@@ -35,7 +35,33 @@ export class InteractionRepository {
     }
 
     async getUserMovieMatrix(): Promise<Map<string, Map<string, number>>> {
-        const interactions = await Interaction.find({ type: { $in: [InteractionType.RATING, InteractionType.LIKE, InteractionType.PURCHASE] } }).exec();
+        const interactions = await Interaction.aggregate([
+            {
+                $match: {
+                    type: { $in: ['rating', 'like', 'purchase'] }
+                }
+            },
+            {
+                $sort: { timestamp: -1 }
+            },
+            {
+                $group: {
+                    _id: '$userId',
+                    interactions: { $push: '$$ROOT' }
+                }
+            },
+            {
+                $project: {
+                    interactions: { $slice: ['$interactions', 100] }
+                }
+            },
+            {
+                $unwind: '$interactions'
+            },
+            {
+                $replaceRoot: { newRoot: '$interactions' }
+            }
+        ]);
 
         const matrix = new Map<string, Map<string, number>>();
 
@@ -50,11 +76,11 @@ export class InteractionRepository {
             const userInteractions = matrix.get(userId)!;
 
             let score = 0;
-            if (interaction.type === InteractionType.RATING && interaction.rating) {
+            if (interaction.type === 'rating' && interaction.rating) {
                 score = interaction.rating / 2;
-            } else if (interaction.type === InteractionType.LIKE) {
+            } else if (interaction.type === 'like') {
                 score = 5;
-            } else if (interaction.type === InteractionType.PURCHASE) {
+            } else if (interaction.type === 'purchase') {
                 score = 4;
             }
 

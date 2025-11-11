@@ -6,6 +6,7 @@ import { InteractionRepository } from '../repositories/InteractionRepository.js'
 import { IMovie } from '../models/Movie.js';
 import { Cache } from '../decorators/CacheDecorator.js';
 import { Log } from '../decorators/LoggingDecorator.js';
+import { RedisAdapter } from '../adapters/RedisAdapter.js';
 
 export enum RecommendationStrategyType {
     USER_BASED = 'user-based',
@@ -17,10 +18,13 @@ export class RecommendationService {
     private strategies: Map<RecommendationStrategyType, IRecommendationStrategy>;
     private movieRepo: MovieRepository;
     private interactionRepo: InteractionRepository;
+    private redis: RedisAdapter;
+    private matrixCacheTTL = 300; // 5 минут
 
     constructor() {
         this.movieRepo = new MovieRepository();
         this.interactionRepo = new InteractionRepository();
+        this.redis = new RedisAdapter();
 
         this.strategies = new Map<RecommendationStrategyType, IRecommendationStrategy>([
             [RecommendationStrategyType.USER_BASED, new UserBasedCollaborativeFiltering()],
@@ -29,7 +33,7 @@ export class RecommendationService {
     }
 
     @Log
-    @Cache('recommendations', 600)
+    @Cache('recommendations:user', 300)
     async getRecommendations(
         userId: string,
         strategyType: RecommendationStrategyType = RecommendationStrategyType.HYBRID,
@@ -45,11 +49,13 @@ export class RecommendationService {
         let movieIds: string[] = [];
 
         if (strategyType === RecommendationStrategyType.HYBRID) {
-            const userBasedIds = await this.strategies.get(RecommendationStrategyType.USER_BASED)!
-                .generateRecommendations(userId, Math.ceil(limit / 2));
-
-            const itemBasedIds = await this.strategies.get(RecommendationStrategyType.ITEM_BASED)!
-                .generateRecommendations(userId, Math.ceil(limit / 2));
+            // Параллельный запуск обеих стратегий
+            const [userBasedIds, itemBasedIds] = await Promise.all([
+                this.strategies.get(RecommendationStrategyType.USER_BASED)!
+                    .generateRecommendations(userId, Math.ceil(limit / 2)),
+                this.strategies.get(RecommendationStrategyType.ITEM_BASED)!
+                    .generateRecommendations(userId, Math.ceil(limit / 2))
+            ]);
 
             movieIds = [...new Set([...userBasedIds, ...itemBasedIds])].slice(0, limit);
         } else {
@@ -78,9 +84,24 @@ export class RecommendationService {
     }
 
     @Log
-    @Cache('recommendations:similar', 600)
+    @Cache('recommendations:similar', 300)
     async getSimilarMovies(movieId: string, limit = 10): Promise<IMovie[]> {
-        const movieUserMatrix = await this.interactionRepo.getMovieUserMatrix();
+        // Кэшируем матрицу
+        const cacheKey = 'matrix:movie-user';
+        let movieUserMatrix: Map<string, Map<string, number>>;
+
+        const cached = await this.redis.get(cacheKey);
+        if (cached) {
+            movieUserMatrix = this.deserializeMatrix(JSON.parse(cached));
+        } else {
+            movieUserMatrix = await this.interactionRepo.getMovieUserMatrix();
+            await this.redis.set(
+                cacheKey,
+                JSON.stringify(this.serializeMatrix(movieUserMatrix)),
+                this.matrixCacheTTL
+            );
+        }
+
         const targetMovie = movieUserMatrix.get(movieId);
 
         if (!targetMovie) {
@@ -136,5 +157,21 @@ export class RecommendationService {
         if (normA === 0 || normB === 0) return 0;
 
         return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    private serializeMatrix(matrix: Map<string, Map<string, number>>): any {
+        const obj: any = {};
+        for (const [key, value] of matrix.entries()) {
+            obj[key] = Object.fromEntries(value);
+        }
+        return obj;
+    }
+
+    private deserializeMatrix(obj: any): Map<string, Map<string, number>> {
+        const matrix = new Map<string, Map<string, number>>();
+        for (const [key, value] of Object.entries(obj)) {
+            matrix.set(key, new Map(Object.entries(value as any)));
+        }
+        return matrix;
     }
 }

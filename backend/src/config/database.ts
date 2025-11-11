@@ -15,7 +15,12 @@ export class Database {
 
     async connect(): Promise<void> {
         try {
-            await mongoose.connect(config.mongoUri);
+            await mongoose.connect(config.mongoUri, {
+                maxPoolSize: 50,
+                minPoolSize: 10,
+                socketTimeoutMS: 45000,
+                serverSelectionTimeoutMS: 5000,
+            });
             console.log('MongoDB connected successfully');
         } catch (error) {
             console.error('MongoDB connection error:', error);

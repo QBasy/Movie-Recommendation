@@ -128,7 +128,31 @@ func GenerateHTMLReport(metricsData []models.Metric, outputPath string) error {
 			b, _ := json.Marshal(v)
 			return template.JS(b)
 		},
+		"mulf": func(a, b float64) float64 {
+			return a * b
+		},
+		"divf": func(a, b float64) float64 {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
+		"float64": func(v interface{}) float64 {
+			switch n := v.(type) {
+			case int:
+				return float64(n)
+			case int64:
+				return float64(n)
+			case float32:
+				return float64(n)
+			case float64:
+				return n
+			default:
+				return 0
+			}
+		},
 	}).Parse(htmlTemplate)
+
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
