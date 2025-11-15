@@ -28,7 +28,8 @@ const MovieSchema = new Schema<IMovie>({
     },
     genres: {
         type: [String],
-        required: true
+        required: true,
+        index: true
     },
     director: {
         type: String,
@@ -37,7 +38,8 @@ const MovieSchema = new Schema<IMovie>({
     cast: [String],
     releaseYear: {
         type: Number,
-        required: true
+        required: true,
+        index: true
     },
     duration: {
         type: Number,
@@ -47,7 +49,8 @@ const MovieSchema = new Schema<IMovie>({
         type: Number,
         default: 0,
         min: 0,
-        max: 10
+        max: 10,
+        index: -1
     },
     posterUrl: String,
     trailerUrl: String,
@@ -61,8 +64,5 @@ const MovieSchema = new Schema<IMovie>({
 });
 
 MovieSchema.index({ title: 'text', description: 'text' });
-MovieSchema.index({ genres: 1 });
-MovieSchema.index({ releaseYear: 1 });
-MovieSchema.index({ rating: -1 });
 
 export const Movie = mongoose.model<IMovie>('Movie', MovieSchema);

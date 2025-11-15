@@ -1,5 +1,5 @@
 import { Interaction, IInteraction, InteractionType } from '../models/Interaction.js';
-import mongoose from 'mongoose';
+import { LeanInteraction } from '../types/lean.js';
 
 export class InteractionRepository {
     async create(data: Partial<IInteraction>): Promise<IInteraction> {
@@ -7,31 +7,34 @@ export class InteractionRepository {
         return await interaction.save();
     }
 
-    async findByUserId(userId: string, limit = 100): Promise<IInteraction[]> {
+    async findByUserId(userId: string, limit = 100): Promise<LeanInteraction[]> {
         return await Interaction.find({ userId })
             .sort({ timestamp: -1 })
             .limit(limit)
             .populate('movieId')
+            .lean<LeanInteraction[]>()
             .exec();
     }
 
-    async findByMovieId(movieId: string, limit = 100): Promise<IInteraction[]> {
+    async findByMovieId(movieId: string, limit = 100): Promise<LeanInteraction[]> {
         return await Interaction.find({ movieId })
             .sort({ timestamp: -1 })
             .limit(limit)
+            .lean<LeanInteraction[]>()
             .exec();
     }
 
-    async findByUserAndType(userId: string, type: InteractionType, limit = 100): Promise<IInteraction[]> {
+    async findByUserAndType(userId: string, type: InteractionType, limit = 100): Promise<LeanInteraction[]> {
         return await Interaction.find({ userId, type })
             .sort({ timestamp: -1 })
             .limit(limit)
             .populate('movieId')
+            .lean<LeanInteraction[]>()
             .exec();
     }
 
-    async findByUserAndMovie(userId: string, movieId: string): Promise<IInteraction[]> {
-        return await Interaction.find({ userId, movieId }).exec();
+    async findByUserAndMovie(userId: string, movieId: string): Promise<LeanInteraction[]> {
+        return await Interaction.find({ userId, movieId }).lean<LeanInteraction[]>().exec();
     }
 
     async getUserMovieMatrix(): Promise<Map<string, Map<string, number>>> {

@@ -1,7 +1,6 @@
-import mongoose, {Schema, Document, Types} from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUser extends Document {
-    _id: Types.ObjectId;
     email: string;
     password: string;
     username: string;
@@ -21,7 +20,8 @@ const UserSchema = new Schema<IUser>({
         required: true,
         unique: true,
         lowercase: true,
-        trim: true
+        trim: true,
+        index: true
     },
     password: {
         type: String,
@@ -31,7 +31,8 @@ const UserSchema = new Schema<IUser>({
         type: String,
         required: true,
         unique: true,
-        trim: true
+        trim: true,
+        index: true
     },
     firstName: String,
     lastName: String,
@@ -42,8 +43,5 @@ const UserSchema = new Schema<IUser>({
 }, {
     timestamps: true
 });
-
-UserSchema.index({ email: 1 });
-UserSchema.index({ username: 1 });
 
 export const User = mongoose.model<IUser>('User', UserSchema);

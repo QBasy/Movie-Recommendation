@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { UserRepository } from '../repositories/UserRepository.js';
 import { SessionService } from './SessionService.js';
 import { IUser } from '../models/User.js';
+import { LeanUser } from '../types/lean.js';
 import { config } from '../config/environment.js';
 import { Log } from '../decorators/LoggingDecorator.js';
 
@@ -22,7 +23,7 @@ export class AuthService {
         username: string;
         firstName?: string;
         lastName?: string;
-    }): Promise<{ user: IUser; token: string }> {
+    }): Promise<{ user: LeanUser; token: string }> {
         const existingUser = await this.userRepo.findByEmail(data.email);
         if (existingUser) {
             throw new Error('User with this email already exists');
@@ -44,14 +45,19 @@ export class AuthService {
             }
         });
 
-        const token = this.generateToken(user);
-        await this.createUserSession(token, user);
+        const leanUser = {
+            ...user.toObject(),
+            _id: user._id
+        } as LeanUser;
 
-        return { user, token };
+        const token = this.generateToken(leanUser);
+        await this.createUserSession(token, leanUser);
+
+        return { user: leanUser, token };
     }
 
     @Log
-    async login(email: string, password: string): Promise<{ user: IUser; token: string }> {
+    async login(email: string, password: string): Promise<{ user: LeanUser; token: string }> {
         const user = await this.userRepo.findByEmail(email);
         if (!user) {
             throw new Error('Invalid credentials');
@@ -74,7 +80,7 @@ export class AuthService {
     }
 
     @Log
-    async validateToken(token: string): Promise<IUser | null> {
+    async validateToken(token: string): Promise<LeanUser | null> {
         try {
             const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
             const session = await this.sessionService.getSession(token);
@@ -90,7 +96,7 @@ export class AuthService {
         }
     }
 
-    private generateToken(user: IUser): string {
+    private generateToken(user: LeanUser): string {
         return jwt.sign(
             { userId: user._id.toString() },
             config.jwtSecret,
@@ -98,7 +104,7 @@ export class AuthService {
         );
     }
 
-    private async createUserSession(token: string, user: IUser): Promise<void> {
+    private async createUserSession(token: string, user: LeanUser): Promise<void> {
         await this.sessionService.createSession(token, {
             userId: user._id.toString(),
             email: user.email,

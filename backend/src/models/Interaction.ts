@@ -21,17 +21,20 @@ const InteractionSchema = new Schema<IInteraction>({
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: true,
+        index: true
     },
     movieId: {
         type: Schema.Types.ObjectId,
         ref: 'Movie',
-        required: true
+        required: true,
+        index: true
     },
     type: {
         type: String,
         enum: Object.values(InteractionType),
-        required: true
+        required: true,
+        index: true
     },
     rating: {
         type: Number,
@@ -40,12 +43,15 @@ const InteractionSchema = new Schema<IInteraction>({
     },
     timestamp: {
         type: Date,
-        default: Date.now
+        default: Date.now,
+        index: -1
     }
 });
 
 InteractionSchema.index({ userId: 1, movieId: 1, type: 1 });
 InteractionSchema.index({ userId: 1, timestamp: -1 });
-InteractionSchema.index({ movieId: 1 });
+InteractionSchema.index({ userId: 1, type: 1 });
+InteractionSchema.index({ movieId: 1, type: 1 });
+InteractionSchema.index({ type: 1, timestamp: -1 });
 
 export const Interaction = mongoose.model<IInteraction>('Interaction', InteractionSchema);
