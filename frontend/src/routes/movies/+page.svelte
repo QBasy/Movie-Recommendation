@@ -4,6 +4,7 @@
     import MovieCard from '$lib/components/MovieCard.svelte';
     import SearchBar from '$lib/components/SearchBar.svelte';
     import { Film } from 'lucide-svelte';
+    import { api } from '$lib/api'
 
     onMount(async () => {
         await moviesStore.loadMovies();
@@ -19,7 +20,7 @@
     async function filterByGenre(genre: string) {
         selectedGenre = genre;
         if (genre) {
-            const { movies } = await import('$lib/api');
+            const { movies } = await api.getMovies();
         } else {
             await moviesStore.loadMovies();
         }
